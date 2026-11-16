@@ -3,6 +3,12 @@ package com.mycompany.finals;
 
 import javax.swing.*;
 import java.awt.*;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 public class Game extends JFrame {
     private Creature creature;
@@ -12,11 +18,29 @@ public class Game extends JFrame {
     private JLabel petImageLabel;
     private JTextArea logTextArea;
     private JButton playButton, eatButton, sleepButton, quitButton;
+    private Connection conn;
+    private int petId;
 
     public Game() {
         setTitle("Javagotchi - Tamagotchi Game");
         setSize(500, 600);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+
+addWindowListener(new WindowAdapter() {
+    @Override
+    public void windowClosing(WindowEvent e) {
+        try {
+            if (conn != null && !conn.isClosed()) {
+                conn.close();
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+
+        dispose();
+        System.exit(0);
+    }
+});
         setLocationRelativeTo(null);
         setLayout(new BorderLayout(10, 10));
 
@@ -48,8 +72,71 @@ public class Game extends JFrame {
             name = "Javagotchi";
         }
 
-        // Initialize Creature
+        // Connect to database
+try {
+
+    conn = DatabaseConnection.connect();
+
+    // Search for an existing pet using its name
+    petId = DatabaseConnection.searchCreature(conn, name);
+
+    if (petId != -1) {
+
+        // Load existing pet
+        creature = DatabaseConnection.loadCreature(conn, petId);
+
+        JOptionPane.showMessageDialog(
+                this,
+                "Welcome back! " + creature.getName()
+                + " has been loaded!"
+        );
+
+        // Handle a pet that was already dead when loaded
+        if (creature.isDead()) {
+
+            DatabaseConnection.deleteCreature(conn, petId);
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    creature.getName()
+                    + " has already passed away. "
+                    + "Its records have been deleted."
+            );
+
+            // Start a new pet with the same name
+            creature = new Creature(name, species);
+
+            petId = DatabaseConnection.createCreature(
+                    conn, name, species
+            );
+        }
+
+    } else {
+
+        // Create a new pet if no matching name exists
         creature = new Creature(name, species);
+
+        petId = DatabaseConnection.createCreature(
+                conn, name, species
+        );
+
+        JOptionPane.showMessageDialog(
+                this,
+                "A new pet named " + name + " has been created!"
+        );
+    }
+
+} catch (SQLException e) {
+
+    JOptionPane.showMessageDialog(
+            this,
+            "Database Error: " + e.getMessage(),
+            "Error",
+            JOptionPane.ERROR_MESSAGE
+    );
+
+    System.exit(1);
+}
 
         // TOP PANEL: Status
         statusLabel = new JLabel(creature.Status(), JLabel.CENTER);
@@ -169,59 +256,108 @@ public class Game extends JFrame {
         }
     }
 
-    // Handle Button Actions
-    private void handleAction(int choice) {
+    
+private void handleAction(int choice) {
 
-        if (creature.isDead()) {
-            return;
+    if (creature.isDead()) {
+        return;
+    }
+
+    String message = "";
+    String activityType = "";
+
+    switch (choice) {
+
+        case 1:
+            creature.play();
+            message = creature.getName() + " had fun playing!";
+            activityType = "PLAY";
+            break;
+
+        case 2:
+            creature.eat();
+            message = creature.getName()
+                    + " enjoyed a delicious meal!";
+            activityType = "EAT";
+            break;
+
+        case 3:
+            creature.sleep();
+            message = creature.getName()
+                    + " took a nice cozy nap.";
+            activityType = "SLEEP";
+            break;
+
+        case 4:
+
+    JOptionPane.showMessageDialog(
+        this,
+        "Awh. Time to put " + creature.getName()
+        + " to sleep :("
+    );
+
+    try {
+        if (conn != null && !conn.isClosed()) {
+            conn.close();
         }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
 
-        String message = "";
+    dispose();
+    System.exit(0);
+    return;
+    }
 
-        switch (choice) {
+    // Save updated creature stats and activity
+    try {
 
-            case 1:
-                creature.play();
-                message = creature.getName() + " had fun playing!";
-                break;
+        DatabaseConnection.updateCreature(
+                conn,
+                petId,
+                creature.getHunger(),
+                creature.getHappiness(),
+                creature.getEnergy()
+        );
 
-            case 2:
-                creature.eat();
-                message = creature.getName()
-                        + " enjoyed a delicious meal!";
-                break;
+        DatabaseConnection.createActivity(
+                conn,
+                petId,
+                activityType
+        );
 
-            case 3:
-                creature.sleep();
-                message = creature.getName()
-                        + " took a nice cozy nap.";
-                break;
+        DatabaseConnection.createMessage(
+                conn,
+                petId,
+                message,
+                activityType
+        );
 
-            case 4:
-                JOptionPane.showMessageDialog(
-                    this,
-                    "Awh. Time to put " + creature.getName()
-                    + " to sleep :("
-                );
-                System.exit(0);
-                break;
-        }
+    } catch (SQLException e) {
 
-        // Update Game Log and Status
-        logTextArea.append(message + "\n");
-        statusLabel.setText(creature.Status());
+        JOptionPane.showMessageDialog(
+                this,
+                "Unable to save game data: " + e.getMessage(),
+                "Database Error",
+                JOptionPane.ERROR_MESSAGE
+        );
+    }
 
-        // Update Pet Expression
-        updatePetImage(choice);
+    // Update Game Log and Status
+    logTextArea.append(message + "\n");
+    statusLabel.setText(creature.Status());
 
-        // Check If Creature Died
-        if (creature.isDead()) {
+    // Update Pet Expression
+    updatePetImage(choice);
 
-            String deathMsg = creature.getDeathReason();
+    // Check If Creature Died
+    if (creature.isDead()) {
 
-            logTextArea.append("\n[R.I.P.] " + deathMsg + "\n");
+        String deathMsg = creature.getDeathReason();
 
-            JOptionPane.showMessageDialog(
+        logTextArea.append("\n[R.I.P.] " + deathMsg + "\n");
+        
+        JOptionPane.showMessageDialog(
                 this,
                 deathMsg,
                 "Game Over",
@@ -233,10 +369,29 @@ public class Game extends JFrame {
             sleepButton.setEnabled(false);
 
             quitButton.setText("Your pet is dead");
-        }
+        
+        // Save death message
+        try {
 
-        logTextArea.setCaretPosition(
-            logTextArea.getDocument().getLength()
-        );
+    DatabaseConnection.createMessage(
+            conn, petId, deathMsg, "DEATH"
+    );
+
+    DatabaseConnection.deleteCreature(conn, petId);
+
+    System.out.println(
+            "[DELETE] Dead pet and its records have been removed."
+    );
+
+} catch (SQLException e) {
+
+    JOptionPane.showMessageDialog(
+            this,
+            "Unable to delete dead pet: " + e.getMessage(),
+            "Database Error",
+            JOptionPane.ERROR_MESSAGE
+    );
+            }
+        }
     }
 }

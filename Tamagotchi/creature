@@ -21,6 +21,18 @@ public class Creature {
         return species;
     }
 
+        public int getEnergy() {
+        return energy;
+    }
+
+        public int getHunger() {
+        return hunger;
+    }
+
+        public int getHappiness() {
+        return happiness;
+    }
+    
     public void play() {
         happiness += 8;
         energy -= 5;

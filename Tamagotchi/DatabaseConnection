@@ -13,7 +13,7 @@ public class DatabaseConnection {
     private static final String url =
             "jdbc:oracle:thin:@localhost:1521:xe";
     private static final String user = "system";
-    private static final String password = "Leon_Kennedy1998";
+    private static final String password = "password";
 
     // --- DATABASE CONNECTION ---
     public static Connection connect() throws SQLException {

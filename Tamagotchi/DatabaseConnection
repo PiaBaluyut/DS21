@@ -1,0 +1,306 @@
+
+package com.mycompany.finals;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class DatabaseConnection {
+
+    // Connection details for Oracle Database
+    private static final String url =
+            "jdbc:oracle:thin:@localhost:1521:xe";
+    private static final String user = "system";
+    private static final String password = "Leon_Kennedy1998";
+
+    // --- DATABASE CONNECTION ---
+    public static Connection connect() throws SQLException {
+        return DriverManager.getConnection(url, user, password);
+    }
+
+    // --- CREATE ---
+    public static int createCreature(Connection conn,
+            String name, String species) throws SQLException {
+
+        String sql =
+                "INSERT INTO PET (name, species) VALUES (?, ?)";
+
+        String statusSQL =
+                "INSERT INTO STATUS "
+                + "(pet_id, hunger, happiness, energy) "
+                + "VALUES (?, ?, ?, ?)";
+
+        conn.setAutoCommit(false);
+
+        try {
+            int petId;
+
+            // Insert pet information
+            try (PreparedStatement pstmt =
+                    conn.prepareStatement(sql, new String[]{"PET_ID"})) {
+
+                pstmt.setString(1, name);
+                pstmt.setString(2, species);
+
+                pstmt.executeUpdate();
+
+                // Get automatically generated Pet ID
+                try (ResultSet rs = pstmt.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        petId = rs.getInt(1);
+                    } else {
+                        throw new SQLException("Pet ID was not generated.");
+                    }
+                }
+            }
+
+            // Insert initial pet status
+            try (PreparedStatement pstmt =
+                    conn.prepareStatement(statusSQL)) {
+
+                pstmt.setInt(1, petId);
+                pstmt.setInt(2, 15);
+                pstmt.setInt(3, 15);
+                pstmt.setInt(4, 15);
+
+                pstmt.executeUpdate();
+            }
+
+            conn.commit();
+            conn.setAutoCommit(true);
+
+            System.out.println("[CREATE] Creature saved successfully!");
+
+            return petId;
+
+        } catch (SQLException e) {
+            conn.rollback();
+            conn.setAutoCommit(true);
+            throw e;
+        }
+    }
+
+    // --- READ ---
+    public static void readCreature(Connection conn, int id)
+            throws SQLException {
+
+        String sql =
+                "SELECT PET.pet_id, PET.name, PET.species, "
+                + "STATUS.hunger, STATUS.happiness, STATUS.energy "
+                + "FROM PET "
+                + "JOIN STATUS ON PET.pet_id = STATUS.pet_id "
+                + "WHERE PET.pet_id = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, id);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+
+                if (rs.next()) {
+                    System.out.println("[READ] Found Creature:");
+                    System.out.println("ID: " + rs.getInt("pet_id"));
+                    System.out.println("Name: " + rs.getString("name"));
+                    System.out.println("Species: " + rs.getString("species"));
+                    System.out.println("Hunger: " + rs.getInt("hunger"));
+                    System.out.println("Happiness: " + rs.getInt("happiness"));
+                    System.out.println("Energy: " + rs.getInt("energy"));
+                } else {
+                    System.out.println("[READ] No creature found with ID: " + id);
+                }
+            }
+        }
+    }
+
+    // --- UPDATE ---
+    public static void updateCreature(Connection conn, int id,
+            int hunger, int happiness, int energy)
+            throws SQLException {
+
+        String sql =
+                "UPDATE STATUS "
+                + "SET hunger = ?, happiness = ?, energy = ?, "
+                + "LastUpdated = SYSDATE "
+                + "WHERE pet_id = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, hunger);
+            pstmt.setInt(2, happiness);
+            pstmt.setInt(3, energy);
+            pstmt.setInt(4, id);
+
+            int rowsUpdated = pstmt.executeUpdate();
+
+            System.out.println("[UPDATE] Updated "
+                    + rowsUpdated + " status record(s).");
+        }
+    }
+
+   // --- DELETE ---
+public static void deleteCreature(Connection conn, int id)
+        throws SQLException {
+
+    conn.setAutoCommit(false);
+
+    try {
+
+        // Delete messages
+        String messageSQL =
+                "DELETE FROM MESSAGES WHERE pet_id = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(messageSQL)) {
+            pstmt.setInt(1, id);
+            pstmt.executeUpdate();
+        }
+
+        // Delete activities
+        String activitySQL =
+                "DELETE FROM ACTIVITIES WHERE pet_id = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(activitySQL)) {
+            pstmt.setInt(1, id);
+            pstmt.executeUpdate();
+        }
+
+        // Delete status
+        String statusSQL =
+                "DELETE FROM STATUS WHERE pet_id = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(statusSQL)) {
+            pstmt.setInt(1, id);
+            pstmt.executeUpdate();
+        }
+
+        // Delete pet
+        String petSQL =
+                "DELETE FROM PET WHERE pet_id = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(petSQL)) {
+            pstmt.setInt(1, id);
+
+            int rowsDeleted = pstmt.executeUpdate();
+
+            conn.commit();
+
+            System.out.println("[DELETE] Deleted "
+                    + rowsDeleted + " pet record(s).");
+        }
+
+    } catch (SQLException e) {
+
+        conn.rollback();
+        throw e;
+
+    } finally {
+        conn.setAutoCommit(true);
+    }
+}
+
+    // --- CREATE ACTIVITY ---
+    public static void createActivity(Connection conn, int petId,
+            String activityType) throws SQLException {
+
+        String sql =
+                "INSERT INTO ACTIVITIES (pet_id, activity_type) "
+                + "VALUES (?, ?)";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, petId);
+            pstmt.setString(2, activityType);
+
+            pstmt.executeUpdate();
+
+            System.out.println("[ACTIVITY] Activity recorded.");
+        }
+    }
+
+    // --- CREATE MESSAGE ---
+    public static void createMessage(Connection conn, int petId,
+            String messageText, String messageType)
+            throws SQLException {
+
+        String sql =
+                "INSERT INTO MESSAGES "
+                + "(pet_id, message_text, message_type) "
+                + "VALUES (?, ?, ?)";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, petId);
+            pstmt.setString(2, messageText);
+            pstmt.setString(3, messageType);
+
+            pstmt.executeUpdate();
+
+            System.out.println("[MESSAGE] Message saved.");
+        }
+    }
+    
+    // --- SEARCH PET ---
+public static int searchCreature(Connection conn, String name)
+        throws SQLException {
+
+    String sql =
+            "SELECT pet_id FROM PET "
+            + "WHERE UPPER(name) = UPPER(?) "
+            + "ORDER BY DateCreated DESC";
+
+    try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+        pstmt.setString(1, name);
+
+        try (ResultSet rs = pstmt.executeQuery()) {
+
+            if (rs.next()) {
+                int petId = rs.getInt("pet_id");
+
+                System.out.println("[SEARCH] Existing pet found!");
+                return petId;
+
+            } else {
+                System.out.println("[SEARCH] No existing pet found.");
+                return -1;
+            }
+        }
+    }
+}
+
+// --- LOAD PET ---
+public static Creature loadCreature(Connection conn, int id)
+        throws SQLException {
+
+    String sql =
+            "SELECT PET.name, PET.species, "
+            + "STATUS.hunger, STATUS.happiness, STATUS.energy "
+            + "FROM PET "
+            + "JOIN STATUS ON PET.pet_id = STATUS.pet_id "
+            + "WHERE PET.pet_id = ?";
+
+    try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+        pstmt.setInt(1, id);
+
+        try (ResultSet rs = pstmt.executeQuery()) {
+
+            if (rs.next()) {
+
+                System.out.println("[LOAD] Loading saved pet...");
+
+                return new Creature(
+                        rs.getString("name"),
+                        rs.getString("species"),
+                        rs.getInt("hunger"),
+                        rs.getInt("happiness"),
+                        rs.getInt("energy")
+                );
+            }
+
+            return null;
+        }
+    }
+}
+}

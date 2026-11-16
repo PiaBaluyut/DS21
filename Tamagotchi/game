@@ -9,6 +9,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.GridBagLayout;
+import java.awt.GridBagConstraints;
+import java.awt.BorderLayout;
 
 public class Game extends JFrame {
     private Creature creature;
@@ -137,7 +140,7 @@ try {
 
     System.exit(1);
 }
-
+        
         // TOP PANEL: Status
         statusLabel = new JLabel(creature.Status(), JLabel.CENTER);
         statusLabel.setFont(new Font("Arial", Font.BOLD, 14));
@@ -147,35 +150,48 @@ try {
 
         add(statusLabel, BorderLayout.NORTH);
 
-        // CENTER PANEL: Pet Image and Game Log
-        JPanel centerPanel = new JPanel(new BorderLayout(5, 5));
+        
+// CENTER PANEL: Background, Pet Image, and Game Log
+BackgroundPanel mainPanel =
+        new BackgroundPanel("/images/background.jpg");
 
-        // Pet Image Display
-        petImageLabel = new JLabel();
-        petImageLabel.setHorizontalAlignment(JLabel.CENTER);
-        petImageLabel.setVerticalAlignment(JLabel.CENTER);
-        petImageLabel.setPreferredSize(new Dimension(300, 300));
+// Center the contents even when the window is maximized
+mainPanel.setLayout(new GridBagLayout());
 
-        centerPanel.add(petImageLabel, BorderLayout.CENTER);
+// Create a content panel to hold the pet and game log
+JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
+contentPanel.setOpaque(false);
+contentPanel.setPreferredSize(new Dimension(500, 450));
 
-        // Game Log
-        logTextArea = new JTextArea(
-            "Welcome to Javagotchi! Meet " + creature.getName()
-            + " the " + species + "!\n"
-        );
+// Pet Image Display
+petImageLabel = new JLabel();
+petImageLabel.setHorizontalAlignment(JLabel.CENTER);
+petImageLabel.setVerticalAlignment(JLabel.CENTER);
+petImageLabel.setPreferredSize(new Dimension(300, 300));
 
-        logTextArea.setEditable(false);
-        logTextArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+contentPanel.add(petImageLabel, BorderLayout.CENTER);
 
-        JScrollPane scrollPane = new JScrollPane(logTextArea);
-        scrollPane.setBorder(
-            BorderFactory.createTitledBorder("Game Log")
-        );
-        scrollPane.setPreferredSize(new Dimension(450, 110));
+// Game Log
+logTextArea = new JTextArea(
+        "Welcome to Javagotchi! Meet " + creature.getName()
+        + " the " + creature.getSpecies() + "!\n"
+);
 
-        centerPanel.add(scrollPane, BorderLayout.SOUTH);
+logTextArea.setEditable(false);
+logTextArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
 
-        add(centerPanel, BorderLayout.CENTER);
+JScrollPane scrollPane = new JScrollPane(logTextArea);
+scrollPane.setBorder(
+        BorderFactory.createTitledBorder("Game Log")
+);
+scrollPane.setPreferredSize(new Dimension(450, 110));
+
+contentPanel.add(scrollPane, BorderLayout.SOUTH);
+
+// Place the content panel in the middle of the background
+mainPanel.add(contentPanel, new GridBagConstraints());
+
+add(mainPanel, BorderLayout.CENTER);
 
         // BOTTOM PANEL: Action Buttons
         JPanel buttonPanel = new JPanel(new GridLayout(2, 2, 8, 8));

@@ -17,7 +17,7 @@
 - Run FINALS.java (the class containing public static void main).
 - Choose a species, enter a name, and test the Play, Eat, Sleep, and Quit buttons.
 
-**User guide**
+# User guide
 
 - Launch the application.
 - A message will appear asking you to choose a pet species such as Cat, Dog, or Fox.

@@ -223,54 +223,88 @@ add(mainPanel, BorderLayout.CENTER);
     }
 
     // Update Pet Image Based on Expression
-    private void updatePetImage(int lastAction) {
+private void updatePetImage(int lastAction) {
 
-        String expression;
+    String expression;
+    String expressionMessage = "";
 
-        // Check the pet's current condition
-        if (creature.getEnergy() <= 4) {
-            expression = "sleepy";
+    // Check the pet's current condition
+    if (creature.getEnergy() <= 4) {
 
-        } else if (creature.getHunger() <= 4) {
-            expression = "hungry";
+        expression = "sleepy";
+        expressionMessage = creature.getName()
+                + " is feeling sleepy! It needs some rest.";
 
-        } else if (creature.getHappiness() <= 4) {
-            expression = "sad";
+    } else if (creature.getHunger() <= 4) {
 
-        } else if (lastAction == 3) {
-            expression = "sleepy";
+        expression = "hungry";
+        expressionMessage = creature.getName()
+                + " is hungry! Please feed it!";
 
-        } else {
-            expression = "happy";
-        }
+    } else if (creature.getHappiness() <= 4) {
 
-        // Get Selected Animal
-        String animal = creature.getSpecies();
+        expression = "sad";
+        expressionMessage = creature.getName()
+                + " is feeling sad! Play with it to cheer it up.";
 
-        // Find Correct Image
-        String imagePath = "/images/" + animal + "_" + expression + ".png";
+    } else if (lastAction == 3) {
 
-        java.net.URL imageURL = getClass().getResource(imagePath);
+        expression = "sleepy";
+        expressionMessage = creature.getName()
+                + " is feeling sleepy after waking up.";
 
-        if (imageURL != null) {
+    } else {
 
-            ImageIcon originalIcon = new ImageIcon(imageURL);
+        expression = "happy";
+        expressionMessage = creature.getName()
+                + " is feeling happy!";
 
-            Image scaledImage = originalIcon.getImage().getScaledInstance(
-                250, 250, Image.SCALE_SMOOTH
-            );
-
-            petImageLabel.setIcon(new ImageIcon(scaledImage));
-            petImageLabel.setText("");
-
-        } else {
-
-            petImageLabel.setIcon(null);
-            petImageLabel.setText(
-                "Image not found: " + imagePath
-            );
-        }
     }
+
+    // Display message in Activity Log
+    logTextArea.append(expressionMessage + "\n");
+
+    // Save message in SQL Database
+    try {
+
+        DatabaseConnection.createMessage(
+                conn,
+                petId,
+                expressionMessage,
+                expression.toUpperCase()
+        );
+
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+
+    // Get Selected Animal
+    String animal = creature.getSpecies();
+
+    // Find Correct Image
+    String imagePath = "/images/" + animal + "_" + expression + ".png";
+
+    java.net.URL imageURL = getClass().getResource(imagePath);
+
+    if (imageURL != null) {
+
+        ImageIcon originalIcon = new ImageIcon(imageURL);
+
+        Image scaledImage = originalIcon.getImage().getScaledInstance(
+            250, 250, Image.SCALE_SMOOTH
+        );
+
+        petImageLabel.setIcon(new ImageIcon(scaledImage));
+        petImageLabel.setText("");
+
+    } else {
+
+        petImageLabel.setIcon(null);
+        petImageLabel.setText(
+            "Image not found: " + imagePath
+        );
+    }
+}
 
     
 private void handleAction(int choice) {

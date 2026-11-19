@@ -1,0 +1,159 @@
+package com.mycompany.finals;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.sql.SQLException;
+import java.util.List;
+
+public class MainMenu extends JFrame {
+
+    public MainMenu() {
+        setTitle("Pawgotchi - Main Menu");
+        setSize(620, 600);
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout(10, 10));
+
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                exitApplication();
+            }
+        });
+
+        // Center background panel
+        BackgroundPanel backgroundPanel = new BackgroundPanel("/images/background.jpg");
+        backgroundPanel.setLayout(new GridBagLayout());
+
+        // Card container for title and menu buttons
+        JPanel menuCard = new JPanel();
+        menuCard.setLayout(new BoxLayout(menuCard, BoxLayout.Y_AXIS));
+        menuCard.setOpaque(false);
+        menuCard.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
+
+        JLabel titleLabel = new JLabel("PAWGOTCHI", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Monospaced", Font.BOLD, 34));
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel subtitleLabel = new JLabel("Your Virtual Creature Companion", SwingConstants.CENTER);
+        subtitleLabel.setFont(new Font("Monospaced", Font.PLAIN, 15));
+        subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JButton startButton = new JButton("Start / Load Pet");
+        startButton.setFont(new Font("Monospaced", Font.BOLD, 16));
+        startButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        startButton.setMaximumSize(new Dimension(240, 48));
+        startButton.setPreferredSize(new Dimension(240, 48));
+        
+        // Inside MainMenu constructor, right after creating startButton:
+        JButton savedPetsButton = new JButton("Saved Pets");
+        savedPetsButton.setFont(new Font("Monospaced", Font.BOLD, 16));
+        savedPetsButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        savedPetsButton.setMaximumSize(new Dimension(240, 44));
+        savedPetsButton.setPreferredSize(new Dimension(240, 44));
+
+
+        JButton exitButton = new JButton("Exit");
+        exitButton.setFont(new Font("Monospaced", Font.BOLD, 16));
+        exitButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        exitButton.setMaximumSize(new Dimension(240, 44));
+        exitButton.setPreferredSize(new Dimension(240, 44));
+
+        startButton.addActionListener(e -> openGame());
+        savedPetsButton.addActionListener(e -> showSavedPetsDialog());
+        exitButton.addActionListener(e -> exitApplication());
+
+        menuCard.add(titleLabel);
+        menuCard.add(Box.createRigidArea(new Dimension(0, 8)));
+        menuCard.add(subtitleLabel);
+        menuCard.add(Box.createRigidArea(new Dimension(0, 36)));
+        menuCard.add(startButton);
+        menuCard.add(Box.createRigidArea(new Dimension(0, 14)));
+        menuCard.add(savedPetsButton);
+        menuCard.add(Box.createRigidArea(new Dimension(0, 14)));
+        menuCard.add(exitButton);
+
+        backgroundPanel.add(menuCard, new GridBagConstraints());
+        add(backgroundPanel, BorderLayout.CENTER);
+    }
+
+    private void showSavedPetsDialog() {
+    List<DatabaseConnection.SavedPetSummary> pets;
+
+    try {
+        pets = DatabaseConnection.getAllCreatures();
+    } catch (SQLException ex) {
+        JOptionPane.showMessageDialog(
+                this,
+                "Unable to load saved pets: " + ex.getMessage(),
+                "Database Error",
+                JOptionPane.ERROR_MESSAGE
+        );
+        return;
+    }
+
+    if (pets.isEmpty()) {
+        JOptionPane.showMessageDialog(
+                this,
+                "No saved pets found in the database yet.",
+                "Saved Pets",
+                JOptionPane.INFORMATION_MESSAGE
+        );
+        return;
+    }
+
+    String[] columns = {"Name", "Species", "Hunger", "Happiness", "Energy"};
+    Object[][] rows = new Object[pets.size()][columns.length];
+
+    for (int i = 0; i < pets.size(); i++) {
+        DatabaseConnection.SavedPetSummary pet = pets.get(i);
+        rows[i][0] = pet.name();
+        rows[i][1] = pet.species();
+        rows[i][2] = pet.hunger();
+        rows[i][3] = pet.happiness();
+        rows[i][4] = pet.energy();
+    }
+
+    JTable table = new JTable(rows, columns);
+    table.setEnabled(false); // Read-only view
+    table.setRowHeight(24);
+    table.setFont(new Font("Monospaced", Font.BOLD, 13));
+    table.getTableHeader().setFont(new Font("Monospaced", Font.BOLD, 13));
+
+    JScrollPane tableScrollPane = new JScrollPane(table);
+    tableScrollPane.setPreferredSize(new Dimension(480, 240));
+
+    JButton closeButton = new JButton("Close");
+
+    JDialog dialog = new JDialog(this, "Saved Pets", true);
+    dialog.setLayout(new BorderLayout(10, 10));
+    dialog.setSize(520, 320);
+    dialog.setResizable(false);
+    dialog.setLocationRelativeTo(this);
+
+    JPanel wrapper = new JPanel(new BorderLayout(10, 10));
+    wrapper.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+    wrapper.add(tableScrollPane, BorderLayout.CENTER);
+
+    JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+    closeButton.addActionListener(e -> dialog.dispose());
+    bottomPanel.add(closeButton);
+    wrapper.add(bottomPanel, BorderLayout.SOUTH);
+
+    dialog.add(wrapper);
+    dialog.setVisible(true);
+}
+    
+    private void openGame() {
+        dispose();
+        Game gameWindow = new Game();
+        gameWindow.setVisible(true);
+    }
+
+    private void exitApplication() {
+        dispose();
+        System.exit(0);
+    }
+}

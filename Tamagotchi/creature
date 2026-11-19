@@ -6,7 +6,6 @@ public class Creature {
     private int hunger = 15;
     private int happiness = 15;
     private int energy = 15;
-    boolean alive;
 
     public Creature(String name, String species) {
     this.name = name;
@@ -45,7 +44,7 @@ public class Creature {
     
     public void play() {
         happiness += 8;
-        energy -= 5;
+        energy -= 4;
         hunger -= 3;
         
         if (happiness > 15) { happiness = 15; }
@@ -78,17 +77,15 @@ public class Creature {
     }
     
     public boolean isDead() {
-    // Example: If energy or happiness drops to 0 or below, or hunger goes too high (e.g., 100)
-    if (energy <= 0 || happiness <= 0 || hunger >= 100) {
-        return true;
-    }
-    return false;
+        // Example: If energy or happiness drops to 0 or below, or hunger goes too high (e.g., 100)
+        
+    return energy <= 0 || happiness <= 0 || hunger <=0;
 }
 
 public String getDeathReason() {
     if (energy <= 0) return name + " ran out of energy and collapsed from exhaustion!";
     if (happiness <= 0) return name + " became too depressed and ran away...";
-    if (hunger >= 100) return name + " starved to death...";
+    if (hunger <=0) return name + " starved to death...";
     return name + " has passed away.";
 }
 }

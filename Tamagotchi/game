@@ -1,14 +1,9 @@
-
 package com.mycompany.finals;
 
 import javax.swing.*;
 import java.awt.*;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
 import java.awt.BorderLayout;
@@ -17,8 +12,8 @@ public class Game extends JFrame {
     private Creature creature;
 
     // UI Components
-    private JLabel statusLabel;
-    private JLabel petImageLabel;
+    private  JLabel statusLabel;
+    private  JLabel petImageLabel;
     private JTextArea logTextArea;
     private JButton playButton, eatButton, sleepButton, quitButton;
     private Connection conn;
@@ -27,23 +22,10 @@ public class Game extends JFrame {
     public Game() {
         setTitle("Pawgotchi - Tamagotchi Game");
         setSize(500, 600);
-        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        setResizable(false); 
+        setExtendedState(JFrame.NORMAL);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-addWindowListener(new WindowAdapter() {
-    @Override
-    public void windowClosing(WindowEvent e) {
-        try {
-            if (conn != null && !conn.isClosed()) {
-                conn.close();
-            }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-        }
-
-        dispose();
-        System.exit(0);
-    }
-});
         setLocationRelativeTo(null);
         setLayout(new BorderLayout(10, 10));
 
@@ -61,19 +43,78 @@ addWindowListener(new WindowAdapter() {
             speciesOptions[0]
         );
 
-        String species = (speciesChoice >= 0)
-                ? speciesOptions[speciesChoice] : "Cat";
+        if (speciesChoice < 0 || speciesChoice >= speciesOptions.length) {
+    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    return;
+}
 
-        String name = JOptionPane.showInputDialog(
+String species = speciesOptions[speciesChoice];
+
+final int MAX_NAME_LENGTH = 20;
+String name = null;
+
+while (true) {
+    String input = JOptionPane.showInputDialog(
+        this,
+        "What's the name of your " + species.toLowerCase() + "? (Max " + MAX_NAME_LENGTH + " characters)",
+        "Name Your Creature",
+        JOptionPane.QUESTION_MESSAGE
+    );
+
+    if (input == null) {
+        break;
+    }
+
+    String trimmed = input.trim();
+
+    if (trimmed.isEmpty()) {
+        JOptionPane.showMessageDialog(
             this,
-            "What's the name of your " + species.toLowerCase() + "?",
-            "Name Your Creature",
-            JOptionPane.QUESTION_MESSAGE
+            "Please put a name for your " + species.toLowerCase() + ".",
+            "Name Required",
+            JOptionPane.WARNING_MESSAGE
         );
+        continue;
+    }
 
-        if (name == null || name.trim().isEmpty()) {
-            name = "Pawgotchi";
+    if (trimmed.length() > MAX_NAME_LENGTH) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Please keep the name to " + MAX_NAME_LENGTH + " characters or fewer.",
+            "Name Too Long",
+            JOptionPane.WARNING_MESSAGE
+        );
+        continue;
+    }
+
+    boolean hasInvalidChar = false;
+    for (int i = 0; i < trimmed.length(); i++) {
+        char c = trimmed.charAt(i);
+        boolean isLetter = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+        if (!isLetter) {
+            hasInvalidChar = true;
+            break;
         }
+    }
+
+    if (hasInvalidChar) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Special characters aren't allowed. Use only letters A-Z or a-z.",
+            "Invalid Characters",
+            JOptionPane.WARNING_MESSAGE
+        );
+        continue;
+    }
+
+    name = trimmed;
+    break;
+}
+
+if (name == null) {
+    dispose();
+    return;
+}
 
         // Connect to database
 try {
@@ -81,7 +122,7 @@ try {
     conn = DatabaseConnection.connect();
 
     // Search for an existing pet using its name
-    petId = DatabaseConnection.searchCreature(conn, name);
+    petId = DatabaseConnection.searchCreature(conn, name, species);
 
     if (petId != -1) {
 
@@ -143,7 +184,7 @@ try {
         
         // TOP PANEL: Status
         statusLabel = new JLabel(creature.Status(), JLabel.CENTER);
-        statusLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        statusLabel.setFont(new Font("Monospaced", Font.BOLD, 14));
         statusLabel.setBorder(
             BorderFactory.createEmptyBorder(10, 10, 10, 10)
         );
@@ -151,47 +192,50 @@ try {
         add(statusLabel, BorderLayout.NORTH);
 
         
-// CENTER PANEL: Background, Pet Image, and Game Log
-BackgroundPanel mainPanel =
+        // CENTER PANEL: Background, Pet Image, and Game Log
+        BackgroundPanel mainPanel =
         new BackgroundPanel("/images/background.jpg");
 
-// Center the contents even when the window is maximized
-mainPanel.setLayout(new GridBagLayout());
+        // Center the contents even when the window is maximized
+        mainPanel.setLayout(new GridBagLayout());
 
-// Create a content panel to hold the pet and game log
-JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
-contentPanel.setOpaque(false);
-contentPanel.setPreferredSize(new Dimension(500, 450));
+        // Create a content panel to hold the pet and game log
+        JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
+        contentPanel.setOpaque(false);
+        contentPanel.setPreferredSize(new Dimension(500, 450));
 
-// Pet Image Display
-petImageLabel = new JLabel();
-petImageLabel.setHorizontalAlignment(JLabel.CENTER);
-petImageLabel.setVerticalAlignment(JLabel.CENTER);
-petImageLabel.setPreferredSize(new Dimension(300, 300));
+        // Pet Image Display
+        petImageLabel = new JLabel();
+        petImageLabel.setHorizontalAlignment(JLabel.CENTER);
+        petImageLabel.setVerticalAlignment(JLabel.CENTER);
+        petImageLabel.setPreferredSize(new Dimension(300, 300));
 
-contentPanel.add(petImageLabel, BorderLayout.CENTER);
+        contentPanel.add(petImageLabel, BorderLayout.CENTER);
 
-// Game Log
-logTextArea = new JTextArea(
-        "Welcome to Pawgotchi! Meet " + creature.getName()
-        + " the " + creature.getSpecies() + "!\n"
-);
+        // Game Log (wider at 465px inside the 500px window)
+        logTextArea = new JTextArea(
+                "Welcome to Pawgotchi! Meet " + creature.getName()
+                + " the " + creature.getSpecies() + "!\n"
+        );
+        logTextArea.setEditable(false);
+        logTextArea.setLineWrap(true);
+        logTextArea.setWrapStyleWord(true);
+        logTextArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
 
-logTextArea.setEditable(false);
-logTextArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        JScrollPane scrollPane = new JScrollPane(logTextArea);
+        scrollPane.setBorder(BorderFactory.createTitledBorder("Game Log"));
+        scrollPane.setPreferredSize(new Dimension(460, 110));
 
-JScrollPane scrollPane = new JScrollPane(logTextArea);
-scrollPane.setBorder(
-        BorderFactory.createTitledBorder("Game Log")
-);
-scrollPane.setPreferredSize(new Dimension(450, 110));
+        contentPanel.add(scrollPane, BorderLayout.SOUTH);
 
-contentPanel.add(scrollPane, BorderLayout.SOUTH);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        gbc.insets = new Insets(5, 6, 5, 6);
+        mainPanel.add(contentPanel, gbc);
 
-// Place the content panel in the middle of the background
-mainPanel.add(contentPanel, new GridBagConstraints());
-
-add(mainPanel, BorderLayout.CENTER);
+        add(mainPanel, BorderLayout.CENTER);
 
         // BOTTOM PANEL: Action Buttons
         JPanel buttonPanel = new JPanel(new GridLayout(2, 2, 8, 8));
@@ -204,7 +248,12 @@ add(mainPanel, BorderLayout.CENTER);
         eatButton = new JButton("Eat");
         sleepButton = new JButton("Sleep");
         quitButton = new JButton("Quit");
-
+        
+        playButton.setFont(new Font("Monospaced", Font.BOLD, 12));
+        eatButton.setFont(new Font("Monospaced", Font.BOLD, 12));
+        sleepButton.setFont(new Font("Monospaced", Font.BOLD, 12));
+        quitButton.setFont(new Font("Monospaced", Font.BOLD, 12));
+        
         buttonPanel.add(playButton);
         buttonPanel.add(eatButton);
         buttonPanel.add(sleepButton);
@@ -221,48 +270,48 @@ add(mainPanel, BorderLayout.CENTER);
         // Show Initial Pet Image
         updatePetImage(0);
     }
+    private void appendLog(String text) {
+    logTextArea.append(text);
+    logTextArea.setCaretPosition(logTextArea.getDocument().getLength());
+}
 
     // Update Pet Image Based on Expression
-private void updatePetImage(int lastAction) {
+    private void updatePetImage(int lastAction) {
 
     String expression;
     String expressionMessage = "";
 
     // Check the pet's current condition
     if (creature.getEnergy() <= 4) {
-
         expression = "sleepy";
-        expressionMessage = creature.getName()
-                + " is feeling sleepy! It needs some rest.";
+        expressionMessage = creature.getName() + " is feeling sleepy! It needs some rest."; 
+    }
 
-    } else if (creature.getHunger() <= 4) {
-
+    else if (creature.getHunger() <= 4) {
         expression = "hungry";
-        expressionMessage = creature.getName()
-                + " is hungry! Please feed it!";
-
-    } else if (creature.getHappiness() <= 4) {
-
+        expressionMessage = creature.getName() + " is hungry! Please feed it!"; 
+    }
+    
+   else if (creature.getHappiness() <= 4) {
         expression = "sad";
-        expressionMessage = creature.getName()
-                + " is feeling sad! Play with it to cheer it up.";
-
-    } else if (lastAction == 3) {
-
-        expression = "sleepy";
-        expressionMessage = creature.getName()
-                + " is feeling sleepy after waking up.";
-
-    } else {
-
+        expressionMessage = creature.getName() + " is feeling sad! Play with it to cheer it up."; 
+   } 
+    
+    else if (lastAction == 3) {
+        expression = "sleep"; 
+    }
+      
+    else if (lastAction == 2) {
+        expression = "eat"; 
+    }
+     
+    else {
         expression = "happy";
-        expressionMessage = creature.getName()
-                + " is feeling happy!";
-
+        expressionMessage = creature.getName() + " is feeling happy!";
     }
 
     // Display message in Activity Log
-    logTextArea.append(expressionMessage + "\n");
+    appendLog(expressionMessage + "\n");
 
     // Save message in SQL Database
     try {
@@ -275,13 +324,12 @@ private void updatePetImage(int lastAction) {
         );
 
     } catch (SQLException e) {
-        e.printStackTrace();
     }
 
     // Get Selected Animal
     String animal = creature.getSpecies();
 
-    // Find Correct Image
+    // Find Correct Imagemessage = creature.getName() + " had fun playing!";
     String imagePath = "/images/" + animal + "_" + expression + ".png";
 
     java.net.URL imageURL = getClass().getResource(imagePath);
@@ -318,45 +366,44 @@ private void handleAction(int choice) {
 
     switch (choice) {
 
-        case 1:
+        case 1 -> {
             creature.play();
             message = creature.getName() + " had fun playing!";
             activityType = "PLAY";
-            break;
+            
+            }
 
-        case 2:
+        case 2 -> {
             creature.eat();
             message = creature.getName()
                     + " enjoyed a delicious meal!";
             activityType = "EAT";
-            break;
+            }
 
-        case 3:
+        case 3 -> {
             creature.sleep();
             message = creature.getName()
                     + " took a nice cozy nap.";
             activityType = "SLEEP";
-            break;
+            }
 
-        case 4:
-
-    JOptionPane.showMessageDialog(
-        this,
-        "Awh. Time to put " + creature.getName()
-        + " to sleep :("
-    );
-
-    try {
-        if (conn != null && !conn.isClosed()) {
-            conn.close();
-        }
-    } catch (SQLException e) {
-        e.printStackTrace();
-    }
-
-    dispose();
-    System.exit(0);
-    return;
+        case 4 -> {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Awh. Time to put " + creature.getName()
+                            + " to sleep :("
+            );
+            
+            try {
+                if (conn != null && !conn.isClosed()) {
+                    conn.close();
+                }
+            } catch (SQLException e) {
+            }
+            
+            dispose();
+            System.exit(0);
+            return; }
     }
 
     // Save updated creature stats and activity
@@ -394,7 +441,7 @@ private void handleAction(int choice) {
     }
 
     // Update Game Log and Status
-    logTextArea.append(message + "\n");
+    appendLog(message + "\n");
     statusLabel.setText(creature.Status());
 
     // Update Pet Expression
@@ -405,7 +452,7 @@ private void handleAction(int choice) {
 
         String deathMsg = creature.getDeathReason();
 
-        logTextArea.append("\n[R.I.P.] " + deathMsg + "\n");
+        appendLog("\n[R.I.P.] " + deathMsg + "\n");
         
         JOptionPane.showMessageDialog(
                 this,
